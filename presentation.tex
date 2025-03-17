@@ -1,0 +1,533 @@
+%\documentclass[a4paper]{article}
+%\usepackage{beamerarticle}
+
+\documentclass[9pt, ignoreonframetext,unicode]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english,russian]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx,pgf}
+\usepackage{multimedia}
+%\usepackage{hyperref}
+
+%\graphicspath{{./pictures_kurs/}}
+
+%\usetheme{Rochester}  %тема без навигации
+%\usetheme{Montpellier} %тема с навигацией в виде дерева
+%\usetheme{Berkeley} %тема с оглавлением на полях
+%\usetheme{Berlin} %тема с навигацией в виде мини-слайдов
+
+\usetheme{Madrid} %тема с таблицей разделов и подразделов
+
+
+\useinnertheme{circles}   %внутренняя тема
+%\useoutertheme{smoothbars}   %внешняя тема
+\usecolortheme{default}     %цветовая схема
+%\usecolortheme{beaver}
+\usefonttheme{serif}    %шрифты
+
+%\setbeameroption{hide notes}
+%
+%\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\usepackage{xcolor}
+\usepackage{multirow}
+%\usepackage{enumitem}
+
+\title[Исследование эффективности PFEM-2]{Исследование эффективности \\метода конечных элементов с частицами\\ PFEM-2 при решении некоторых задач \\ вычислительной гидродинамики}
+\author[Г.\,Э.~Сербин]{Г.\,Э.~Сербин\\Группа ФН2-81Б\\Научный руководитель: А.\,Ю.~Попов}
+\institute[МГТУ]{МГТУ им. Н.\,Э.~Баумана}
+\date{\today}
+\titlegraphic{\includegraphics[width=2cm]{logo.png}}
+
+
+\begin{document}
+
+\begin{frame}[plain]
+\maketitle
+\end{frame}
+
+
+
+\section{Введение и постановка задачи}
+
+
+\begin{frame}{Введение}
+		\begin{columns}
+			%\vspace*{-50mm}
+			\begin{column}{0.57\textwidth}
+					\begin{block}{Движение вязкой несжимаемой жидкости}	
+		\begin{equation*}
+	\left\{
+	\begin{array}{rcl}
+		\rho\biggl(\dfrac{\partial \vec{u}}{\partial t}&+&\left(\vec{u} \cdot \nabla\right) \vec{u}\biggr)=-\nabla p + \mu \Delta \vec{u}+\rho \vec{g},\\
+		\nabla \cdot \vec{u} &=& 0,
+	\end{array}
+	\right.
+\end{equation*}
+	\end{block}
+			\end{column}
+			\begin{column}{0.45\textwidth}
+\begin{center}
+					Граничные условия:
+\end{center}					
+\vspace*{-5mm}
+
+\begin{align*}
+	\left.\vec{u}\right|_{\Gamma_1}&=\vec{u}_0,\quad  \left. p\right|_{\Gamma_2}=p_0;\\
+	\left.\dfrac{\partial\vec{u}}{\partial \vec{n}}\right|_{\Gamma_3}&=\overrightarrow{\text{const}},\quad
+	\left.\dfrac{\partial p}{\partial \vec{n}}\right|_{\Gamma_4}=\text{const}.
+\end{align*}
+		\end{column}
+		\end{columns}
+	\medskip
+\begin{block}{Методы частиц}
+	\begin{itemize}
+		\item Метод сглаженных частиц (SPH, Гингольд и Монаган, 1977);
+		\item Метод движущихся частиц (MPS, Кошизука и Ока, 1996);
+		\item Метод конечных элементов с частицами (PFEM, Идельсон и Онате, 2004).
+	\end{itemize}
+\end{block}
+\begin{block}{Метод конечных элементов с частицами PFEM-2 (2013)}
+\begin{itemize}
+\item гибридный эйлерово-лагранжев метод;
+\item более крупный шаг по времени, не требует мелких сеток;
+\item расчетные области произвольной геометрии.
+\end{itemize}
+\end{block}
+%Представляет интерес оценка эффективности программной реализации, превосходит ли традиционные подходы.
+
+\end{frame}
+
+\section{Метод конечных элементов с частицами PFEM-2}
+\begin{frame}{Метод конечных элементов с частицами PFEM-2}
+\begin{block}{}
+\textbf{Основная идея метода.} Разделение задачи по физическим процессам: конвекция моделируется набором частиц, решение гидродинамической задачи --- методом конечных элементов.
+\end{block}
+		\begin{block}{Лагранжев шаг}
+			Использование частиц для моделирования конвективного слагаемого позволяет решать задачи на грубых сетках и с относительно большим шагом по времени.
+			% аппроксимация которого на сетке представляет наибольшую сложность, 
+		\end{block}
+		\begin{block}{Эйлеров шаг}
+			Моделирование влияния вязкости, градиента давления и внешних сил путем решения задачи
+методом конечных элементов.
+			\end{block}
+
+
+
+
+Необходимо:
+\begin{enumerate}
+	\item доработать реализацию PFEM-2 для повышения ее быстродействия;
+	\item cравнить эффективность реализации PFEM-2 и пакета \texttt{OpenFOAM} на примерах обтекания кругового цилиндра и профиля крыла;	
+	\item сравнить эффективность распараллеливания реализаций.
+\end{enumerate}
+
+\end{frame}
+
+
+\begin{frame}{Метод конечных элементов с частицами PFEM-2}
+	\begin{enumerate}
+		\setlength{\parskip}{0.1pt}
+		\item перемещение частиц;
+				\[
+		\vec{x}_p^{k+1} = \vec{x}_p^k+\tau \vec{u}^m (\vec{x}_p^k),\quad k=\overline{0,\,K-1}.
+		\]
+		
+		\item обновление поля скоростей в узлах сетки:
+		\[
+		\vec{u}^j=\frac{\sum_{i=1}^k \vec{u}_i N^j(\vec{x}_i)}{\sum_{i=1}^k N^j(\vec{x}_i)}.
+		\]
+		\item решение методом КЭ задачи
+		\begin{equation*}
+			\rho\dfrac{ \vec{u}^{m+1}}{\Delta t}=\rho \dfrac{\vec{u}^m}{\Delta t} -\nabla p^{m+1} + \nabla \cdot \hat{\tau}^{m+\theta},\qquad
+			\nabla \cdot \vec{u}^{m+1} = 0.
+		\end{equation*}
+		Метод дробных шагов (расщепление по переменным):
+		\begin{enumerate}
+			\setlength{\parskip}{7pt}
+			\item определить вектор прогноза скорости $\vec{u}^*$ из $\rho \frac{\vec{u}^{*}}{\Delta t}=\rho \frac{\vec{u}^m}{\Delta t}+ \nabla \cdot \hat{\tau}^{m+\theta}$;
+			\item найти $p$ из уравнения Пуассона
+			$
+			\Delta p^{m+1}= \frac{\rho}{\Delta t} \nabla \cdot \vec{u}^{*};
+			$
+			\item полученное давление подставить в $\rho \frac{\vec{u}^{m+1}}{\Delta t}=\rho \frac{\vec{u}^*}{\Delta t}-\nabla p^{m+1}$.
+		\end{enumerate}
+		
+		\item коррекция скоростей частиц $\delta \vec{v}_p^{m+1}=\sum_{i=1}^4 \left(\vec{u}^{m+1}_i-\vec{u}^m_i\right)N_i(\vec{r}_p).$
+		
+	\end{enumerate}
+	
+\end{frame}
+
+%\begin{frame}{Работа с частицами}
+%\textbf{Перемещение частиц } вдоль линий тока в новые положения --- на каждом шаге определяется, в какой ячейке находится частица, вычисляется скорость и производится ее перемещение:
+%\[
+%t_m^k=t_m+k\tau,\qquad \tau=\frac{t_{m+1}-t_m}{K}.
+%\]
+%
+%\[
+%\vec{x}_p^{k+1} = \vec{x}_p^k+\tau \vec{v}^m (\vec{x}_p^k),\quad k=0,\,1,\,\ldots,K-1.
+%\]
+%Движение происходит по фиксированному полю скоростей $\vec{v}^m$.
+%\bigskip
+%
+%\textbf{Обновление поля скоростей в узлах сетки} путем учета вклада от
+%всех частиц, находящихся в ячейках, содержащих этот узел:
+%\[
+%\vec{v}^j=\frac{\sum_{i=1}^k \vec{v}_i\phi^j(\vec{x}_i)}{\sum_{i=1}^k \phi^j(\vec{x}_i)}.
+%\]
+%
+%\end{frame}
+
+%\begin{frame}{Решение гидродинамической задачи}
+%\begin{block}{Разностная схема}
+%\begin{equation*}
+%\left\{
+%\begin{array}{rcl}
+%\rho\dfrac{ \vec{u}^{m+1}}{\Delta t}&=&\rho \dfrac{\vec{u}^m}{\Delta t} -\nabla p^{m+1} + \nabla \cdot \hat{\tau}^{m+\theta},\\
+%\\
+%\nabla \cdot \vec{u}^{m+1} &=& 0,
+%\end{array}
+%\right.
+%\end{equation*}
+%\end{block}
+%где
+%\[
+%\tau_{ij}=2\mu(\dot{\varepsilon}_{ij}-\delta_{ij}\frac{\dot{\varepsilon}_{kk}}{3}),\,i,\,j=1,\,2,\qquad
+%\dot{\varepsilon}_{ij}=\frac{1}{2}\left(\frac{\partial u_i}{\partial x_j}+\frac{\partial u_j}{\partial x_i} \right).
+%\]
+%\begin{gather}
+%\label{refParametrh3}
+%\rho \frac{\vec{u}^{*}}{\Delta t}=\rho \frac{\vec{u}^m}{\Delta t}+ \nabla \cdot \hat{\tau}^{m+\theta},\\
+%\label{refParametreps}
+%\rho \frac{\vec{u}^{m+1}}{\Delta t}=\rho \frac{\vec{u}^*}{\Delta t}-\nabla p^{m+1}.
+%\end{gather}
+%Метод дробных шагов (расщепление по переменным):
+%\begin{enumerate}
+%\item Определить вектор прогноза скорости $\vec{u}^*$ из уравнения $\eqref{refParametrh3}$.
+%\item Найти $p$ из уравнения Лапласа
+%$
+%\Delta p^{m+1}= \frac{\rho}{\Delta t} \nabla \cdot \vec{u}^{*}.
+%$
+%
+%\item Полученное давление подставить в $\eqref{refParametreps}$.
+%
+%\end{enumerate}
+%\end{frame}
+
+\section{Тестовые задачи}
+
+
+\begin{frame}{Тестовая задача: обтекание кругового цилиндра}
+%$L_1=2.2$ м, $L_2=0.41$ м. $D=0.1$ м. На входе в канал параболическое распределение скорости, $v_{\max} = 1.5$ м/с в центре канала.
+%	 Плотность жидкости $\rho = 1$ кг/м$^3$, коэффициент динамической вязкости $\mu = 0.001$ Па $\cdot$ с.
+	
+	\vspace*{-9mm}
+	\begin{columns}
+		%\vspace*{-50mm}
+		\begin{column}{0.5\textwidth}
+	\begin{figure}[!h]
+	\centering
+	\includegraphics[scale =0.205]{cylinder 3.png}
+	%\caption{Расчетная область}
+	\label{picnaca}
+\end{figure}
+		\end{column}
+		\begin{column}{0.5\textwidth}
+	Временной шаг $\Delta t = 0.0025$с.\\
+	Плотность жидкости $\rho = 1$ кг/м$^3$.\\
+	Коэфф-т дин. вязкости $\mu = 0.001$ Па $\cdot$ с.\\
+	Число Рейнольдса $\text{Re}=\dfrac{V D}{\nu} =100$.\\
+	Сетка из 19 700 ячеек.
+		\end{column}
+	\end{columns}
+\vspace*{-5mm}
+\begin{center}
+	Результаты до доработки:
+\end{center}
+Время расчета 1 с. модельного времени \qquad {\color{red} \texttt{OpenFOAM} 656с}, \qquad PFEM-2 717с
+
+\vspace*{-2mm}
+				\begin{figure}[!h]
+	\centering
+	\begin{tabular}{cc}
+		\includegraphics[scale =0.2]{Cx.pdf} & \includegraphics[scale =0.2]{Cy.pdf}\\
+	\end{tabular}
+	\caption{Коэффициенты лобового сопротивления и подъемной силы}
+	\label{picCx0}
+\end{figure}
+\end{frame}
+
+
+\begin{frame}{Тестовая задача: обтекание крыла NACA-0012}
+	%$L_1=2.2$ м, $L_2=0.41$ м. $D=0.1$ м. На входе в канал параболическое распределение скорости, $v_{\max} = 1.5$ м/с в центре канала.
+	%Плотность жидкости $\rho = 1$ кг/м$^3$, коэффициент динамической вязкости $\mu = 0.001$ Па $\cdot$ с.	
+	\vspace*{-9mm}
+	\begin{columns}
+		%\vspace*{-50mm}
+		\begin{column}{0.55\textwidth}
+			\begin{figure}[!h]
+				\centering
+				\includegraphics[scale =0.205]{naca 4.png}
+				\label{picnaca}
+			\end{figure}
+		\end{column}
+		\begin{column}{0.5\textwidth}
+			Временной шаг $\Delta t = 0.001$с.\\
+			Плотность жидкости $\rho = 1$ кг/м$^3$.\\
+			Коэфф-т дин. вязкости $\mu = 0.001$ Па $\cdot$ с.\\
+			Число Рейнольдса $\text{Re}=\frac{V D}{\nu} =10 000$.\\
+				Сетка из 174 000 ячеек.
+		\end{column}
+	\end{columns}
+\vspace*{-5mm}
+%\begin{center}
+%	Результаты до доработки:
+%\end{center}
+%Время расчета 1 с. модельного времени \qquad {\color{red} \texttt{OpenFOAM} 656с}, \qquad PFEM-2 717с
+%
+%\vspace*{-2mm}
+%\begin{figure}[!h]
+%	\centering
+%	\begin{tabular}{cc}
+%		\includegraphics[scale =0.2]{Cx.pdf} & \includegraphics[scale =0.2]{Cy.pdf}\\
+%	\end{tabular}
+%	\caption{Коэффициенты лобового сопротивления и подъемной силы}
+%	\label{picCx0}
+%\end{figure}
+	
+
+\end{frame}
+
+
+\begin{frame}{Доработка реализации: сборка глобальных матриц}
+	
+	\textbf{Ранее реализованный подход к сборке} 
+
+	\begin{enumerate}
+	\setlength{\parskip}{0.1pt}
+	\item подготовка матриц и векторов правых частей;
+		
+	\item цикл по времени:
+	\begin{enumerate}
+		\setlength{\parskip}{7pt}
+		\item сборка локальных матриц и векторов правых частей, добавление их в глобальные;
+		\item применение граничных условий;
+		\item решение системы линейных алгебраических уравнений;	
+	\end{enumerate}
+
+\end{enumerate}
+	
+	\textbf{Доработанный подход к сборке}
+	\begin{enumerate}
+	\item подготовка матриц и векторов правых частей, параллельная реализация;
+	
+	\item сборка глобальной матрицы до цикла по времени;
+				
+	\item цикл по времени:				
+		\begin{enumerate}
+		\setlength{\parskip}{7pt}
+		\item сборка векторов правых частей, учитываются граничные условия;
+		\item обмен между вычислительными узлами;
+		\item решение системы линейных алгебраических уравнений;
+		\item присвоение заданных значений в граничных узлах.
+	\end{enumerate}			
+		\end{enumerate}
+	
+\end{frame}
+
+\begin{frame}{Доработка реализации: Г.У. для прогноза скоростей}
+		
+ Г.У. 1-го рода $\vec{u}|_\Gamma = \vec{u}_0$ для прогнозного поля скоростей
+				\begin{align*}
+	\rho \frac{\vec{u}^{n+1} - \vec{u}^*}{\Delta t} = -\nabla p \quad \Rightarrow \quad 
+	u^*_k|_\Gamma =\left.u^{n+1}_k\right|_\Gamma + \frac{\Delta t}{\rho}\left.\frac{\partial p}{\partial x_k}\right|_\Gamma,\,k=1,\,2.
+\end{align*}
+
+
+\begin{block}{\textbf{Программная реализация}}
+	
+	\begin{itemize}
+		\item[\textcolor{red}{\textbullet}] \textbf{\texttt{FEFieldFunction} (\texttt{deal.II})}.
+		
+			<<Натягивается>> на все поле давления, используя конечно-элементную аппроксимацию. Не эффективно.
+		
+		
+		\item[\textcolor{green}{\textbullet}] \textbf{Обработка заданных узлов.}
+		\begin{enumerate}
+		\item Обход только ребер ячеек, лежащих на границе. Значение в гауссовой точке $M$ 
+		\begin{equation*}
+			\nabla p(\vec{M}) = \sum_{i=1}^4 p_i \nabla N_i(\vec{M}).
+		\end{equation*}
+		\item Проецирование значений с гауссовых точек на узлы
+		\begin{equation*}
+			\label{projection}
+			\nabla p^j=\frac{\sum_{i=1}^k \nabla p(\vec{M}_i)\,  N^j(\vec{M}_i)}{\sum_{i=1}^k N^j(\vec{M}_i)},
+		\end{equation*}
+%	 $N^j$ --- функция формы элемента, суммирование по всем гауссовым точкам, вносящим вклад в значение градиента в узле.		
+		 (в случае параллельных вычислений необходим обмен данными).
+		\end{enumerate}
+	
+	\end{itemize}
+	\end{block}
+%\begin{center}
+%		\textbf{Программная реализация}
+%\end{center}
+%\begin{columns}
+%	%\vspace*{-50mm}
+%	\begin{column}{0.4\textwidth}
+%		\begin{block}{\texttt{FEFieldFunction} (\texttt{deal.II})}
+%			<<Натягивается>> на все поле давления, используя конечно-элементную аппроксимацию.
+%		\end{block}
+%	\end{column}
+%	\begin{column}{0.5\textwidth}
+%		\begin{block}{Обработка заданных узлов}
+%Обходятся только ребра ячеек, лежащих на границе. Значение в гауссовой точке $M$ определяется через функции формы по формуле
+%\begin{equation*}
+%	\nabla p |_\Gamma = \sum_{i=1}^4 p_i \nabla N_i(M).
+%\end{equation*}
+%Далее выполняется проецирование значений с гауссовых точек на узлы (обусловлено тем что вычисление функций формы и их градиентов в \texttt{deal.II} реализовано в гауссовых точках) по формуле $\eqref{projection}$. 
+%\end{block}
+%	\end{column}
+%\end{columns}
+
+
+
+
+
+%	\textbf{Программная реализация через \texttt{FEFieldFunction}}
+%
+%Градиент давления находится с помощью функции \texttt{FEFieldFunction} из библиотеки \texttt{deal.II}, которая <<натягивается>> на все поле давления, используя конечно-элементную аппроксимацию.
+%
+%	\textbf{Программная реализация через обработку заданных узлов}
+%
+%Для нахождения градиента давления $\nabla p$ обходятся только ребра ячеек, лежащих на границе. Значение в гауссовой точке $M$ определяется через функции формы по формуле
+%\begin{equation*}
+%	\nabla p |_\Gamma = \sum_{i=1}^4 p_i \nabla N_i(M).
+%\end{equation*}
+%Далее выполняется проецирование значений с гауссовых точек на узлы (обусловлено тем что вычисление функций формы и их градиентов в \texttt{deal.II} реализовано в гауссовых точках) по формуле $\eqref{projection}$. 
+
+\end{frame}
+
+
+\begin{frame}{Сравнение эффективности реализаций: круговой цилиндр}
+	\begin{center}
+	\begin{tabular}{|c|c|c|c|c|c|c|}\hline	
+		& \multirow{2}{*}{$\Delta t$, с}& Время расчета & \multirow{2}{*}{$C_x$} & \multirow{2}{*}{$C_y$} & Ошибка & Ошибка \\ 
+		& &   (1 c модел.), с& & & $C_x$, \%    & $C_y$, \% \\ \hline
+		{\color{red} \texttt{OpenFOAM}} & 0.0001		& 656 				  & 3.2237 & 0.9654 & 0.195 & 3.46 \\ \hline
+		PFEM-2 & 0.0025			& 717   	  & 3.2513 & 0.9496 & 0.659 & 5.04\\ \hline
+		{\color{blue} PFEM-2 upd. } & 0.002	& 449   			  & 3.2337 & 0.9665 & 0.115 & 3.35\\ \hline
+	\end{tabular}
+\end{center}
+\begin{center}
+	Таблица 1. Результаты работы программ
+\end{center}
+
+\vspace*{-2mm}
+\begin{figure}[!h]
+	\centering
+	\begin{tabular}{cc}
+		\includegraphics[scale =0.2]{Cx500.pdf} & 	\includegraphics[scale =0.2]{Cy500.pdf}\\
+		 $C_x$ & $C_y$\\
+	\end{tabular}
+	\caption{Коэффициенты лобового сопротивления и подъемной силы}
+	\label{picCx0}
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Сравнение эффективности реализаций: крыло NACA-0012}
+	
+	\begin{center}
+	\begin{tabular}{|c|c|c|c|c|c|c|}\hline	
+		& \multirow{2}{*}{$\Delta t$, с}&Время расчета& \multirow{2}{*}{$\overline{C}_x$} & \multirow{2}{*}{$\overline{C}_y$} & Ошибка & Ошибка \\ 
+		& &(0.05c модел.), с& & & $\overline{C}_x$, \%    & $\overline{C}_y$, \% \\ \hline
+		{\color{red}OpenFOAM}& 0.00005		& 445 				  & 0.0444 & 0.127 & 7.5 & 9.4 \\ \hline
+		{\color{blue}PFEM-2 upd.}& 0.001	& 575   				  & 0.0437 & 0.105 & 9.0 & 25.0\\ \hline
+	\end{tabular}
+\end{center}
+\begin{center}
+	Таблица 2. Результаты работы программ
+\end{center}
+
+	\vspace*{-2mm}
+	\begin{figure}[!h]
+		\centering
+		\begin{tabular}{cc}
+		\includegraphics[scale =0.25]{CxNACA500.pdf} & \includegraphics[scale =0.25]{CyNACA500.pdf} \\
+		\end{tabular}
+		\caption{Коэффициенты лобового сопротивления и подъемной силы}
+		\label{picCx0}
+	\end{figure}
+	
+\end{frame}
+
+\begin{frame}{Сравнение эффективности параллелизации}
+	Кластер кафедры <<Прикладная математика>> МГТУ им. Н.Э. Баумана: \\
+	6 вычислительных узлов, каждый состоит из 18-ядерного процессора \\ Intel Core i9-10980XE и 128 ГБ ОЗУ.
+	\begin{figure}[!h]
+	\centering
+	\begin{tabular}{cc}
+		\includegraphics[scale =0.25]{Para1.pdf} & 	\includegraphics[scale =0.25]{Para2.pdf} \\
+		сетка из 174 000 ячеек &  сетка из 562 500 ячеек 
+	\end{tabular}
+	\caption{Ускорение программ: \textbf{Максимальное}, {\color{red}OpenFOAM}, {\color{blue}PFEM-2 upd.}}
+	\label{picAcc}
+\end{figure}
+
+Время работы на одном узле для сетки из 174 000 ячеек $\approx$ 11 минут, для сетки из 562 500 ячеек $\approx$ 36 минут.
+\end{frame}
+
+
+
+\section{Заключение}
+\begin{frame}{Заключение}
+	\begin{itemize}
+\item Рассмотрен общий подход к решению задач гидродинамики методом конечных элементов с частицами PFEM-2, реализация алгоритма доработана для повышения ее быстродействия;
+\item Выполнены вычислительные эксперименты, сравнены эффективность реализации PFEM-2 (с использованием \texttt{deal.II}) и пакета \texttt{OpenFOAM} для разных параметров на примерах обтекания кругового цилиндра и профиля крыла;
+
+\item Рассмотрена эффективность распараллеливания реализаций на кластерной системе;
+
+\item Метод PFEM-2 показал свою эффективность и конкурентоспособность в сравнении с традиционными подходами.
+	\end{itemize}
+\end{frame}
+
+%\section{Список использованных источников}
+%\begin{frame}{Список использованных источников}
+%\begin{thebibliography}{4}
+%	
+%\bibitem{XXItom}
+%Зарубин В.С. Математическое моделирование в технике: Учеб. для вузов. М.: Изд-во МГТУ им. Н.Э. Баумана, 2003. 495 с.
+%
+%\bibitem{Moiseev}
+%Моисеев Н.Н. Математика ставит эксперимент. М.:Наука, 1979. 222 с.
+%
+%\bibitem{PFEM2013}
+%Idelsohn S.R., Nigro N.M., Gimenez J.M., Rossi R., Marti J.M. A
+%fast and accurate method to solve the incompressible Navier-Stokes
+%equations // Engineering Computations. 2013. V.30, No. 2. Pp.197-222. doi:
+%10.1108/02644401311304854
+%
+%\bibitem{PFEM2014}
+%Idelsohn S.R., Nigro N.M., Gimenez J.M., Rossi R., Marti J.M.
+%Evaluating the perfomance of particle finite element method in parallel architectures //Springer Publishing. 2014. Pp.103-116. doi:10.1007/s40571-014-0009-4
+%%\bibitem{flow}
+%%Schäfer M., Turek S., Durst F., Krause E., Rannacher R. Benchmark computations of laminar flow around a cylinder // Flow Simulation with High-Performance Computers II. Notes on Numerical Fluid Mechanics (NNFM), 1996. V. 48. P. 547--566.
+%
+%\bibitem{mss}
+%Зарубин В.С., Кувыркин Г.Н. Математические модели механики и электродинамики сплошной среды. М.: Изд-во МГТУ им. Н.Э. Баумана, 2008.
+%512 с.
+%
+%\bibitem{dealii}
+%The deal.II Finite Element Library. Home page. [Электронный ресурс]. URL:
+%http://www.dealii.org/ (дата обращения: 26.06.2021).
+%\end{thebibliography}
+%\end{frame}
+
+
+\end{document} 
